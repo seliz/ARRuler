@@ -15,6 +15,8 @@
 		FF1562A81F0A7B6A0003F046 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = FF1562A61F0A7B6A0003F046 /* LaunchScreen.storyboard */; };
 		FF1562B31F0A7B6B0003F046 /* RulerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1562B21F0A7B6B0003F046 /* RulerTests.swift */; };
 		FF1562BE1F0A7B6B0003F046 /* RulerUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1562BD1F0A7B6B0003F046 /* RulerUITests.swift */; };
+		FF1562CC1F0A7C150003F046 /* Line.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1562CB1F0A7C150003F046 /* Line.swift */; };
+		FF1562CE1F0A81450003F046 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1562CD1F0A81450003F046 /* Extensions.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,6 +51,8 @@
 		FF1562B91F0A7B6B0003F046 /* RulerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RulerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FF1562BD1F0A7B6B0003F046 /* RulerUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RulerUITests.swift; sourceTree = "<group>"; };
 		FF1562BF1F0A7B6B0003F046 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		FF1562CB1F0A7C150003F046 /* Line.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Line.swift; sourceTree = "<group>"; };
+		FF1562CD1F0A81450003F046 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -100,12 +104,14 @@
 			isa = PBXGroup;
 			children = (
 				FF15629B1F0A7B6A0003F046 /* AppDelegate.swift */,
+				FF1562CB1F0A7C150003F046 /* Line.swift */,
 				FF15629D1F0A7B6A0003F046 /* art.scnassets */,
 				FF15629F1F0A7B6A0003F046 /* ViewController.swift */,
 				FF1562A11F0A7B6A0003F046 /* Main.storyboard */,
 				FF1562A41F0A7B6A0003F046 /* Assets.xcassets */,
 				FF1562A61F0A7B6A0003F046 /* LaunchScreen.storyboard */,
 				FF1562A91F0A7B6A0003F046 /* Info.plist */,
+				FF1562CD1F0A81450003F046 /* Extensions.swift */,
 			);
 			path = Ruler;
 			sourceTree = "<group>";
@@ -260,8 +266,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FF1562CC1F0A7C150003F046 /* Line.swift in Sources */,
 				FF1562A01F0A7B6A0003F046 /* ViewController.swift in Sources */,
 				FF15629C1F0A7B6A0003F046 /* AppDelegate.swift in Sources */,
+				FF1562CE1F0A81450003F046 /* Extensions.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
