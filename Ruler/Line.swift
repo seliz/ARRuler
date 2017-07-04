@@ -16,17 +16,21 @@ class Line: SCNNode {
     
     enum Side: String {
         case left, right
+        case front, back
+        case top, bottom
         
         var axis: SCNVector3.Axis {
             switch self {
             case .left, .right: return .x
+            case .top, .bottom: return .y
+            case .front, .back: return .z
             }
         }
         
         var edge: Edge {
             switch self {
-            case  .left: return .min
-            case  .right: return .max
+            case  .back, .bottom, .left: return .min
+            case  .front, .top, .right: return .max
             }
         }
     }
@@ -44,11 +48,13 @@ class Line: SCNNode {
     }
     
     enum VerticalAlignment {
-        case top
+        case top, bottom, center
         
         var anchor: Float {
             switch self {
+            case .bottom: return 0
             case .top: return 1
+            case .center: return 0.5
             }
         }
     }
@@ -177,6 +183,12 @@ class Line: SCNNode {
         case .x:
             Line.width = absDistance
             line.position = position + SCNVector3(x: offset, y: 0, z: 0)
+        case .y:
+            Line.height = absDistance
+            line.position = position + SCNVector3(x: 0, y: offset, z: 0)
+        case .z:
+            Line.length = absDistance
+            line.position = position + SCNVector3(x: 0, y: 0, z: offset)
         }
     }
     
@@ -187,7 +199,7 @@ class Line: SCNNode {
         }
         
         text.string = lengthFormatter.string(for: NSNumber(value: distanceInMetres))! + " cm"
-        let textAnchor = text.pointInBounds(at: SCNVector3(x: horizontalAlignment.anchor, y: verticalAlignment.anchor, z:0))
+        let textAnchor = text.pointInBounds(at: SCNVector3(x: horizontalAlignment.anchor, y: verticalAlignment.anchor, z: 0))
         label.pivot = SCNMatrix4(translation: textAnchor)
     }
 }

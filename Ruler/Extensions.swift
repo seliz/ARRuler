@@ -41,7 +41,7 @@ extension SCNMaterial {
 
 extension SCNVector3 {
     enum Axis {
-        case x
+        case x, y, z
     }
     
     static let zero = SCNVector3Zero
@@ -81,6 +81,8 @@ extension SCNVector3 {
     mutating func setAxis(_ axis: Axis, to value: Float) {
         switch axis {
         case .x: x = value
+        case .y: y = value
+        case .z: z = value
         }
     }
 }
