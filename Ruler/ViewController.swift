@@ -23,54 +23,48 @@ class ViewController: UIViewController, ARSCNViewDelegate, UIGestureRecognizerDe
     
     var currentAnchor: ARAnchor?
     
-    struct RenderingCategory: OptionSet {
+    struct Rendering: OptionSet {
         let rawValue: Int
-        static let reflected = RenderingCategory(rawValue: 1 << 1)
-        static let planes = RenderingCategory(rawValue: 1 << 2)
+        static let planes = Rendering(rawValue: 1 << 2)
     }
     
-    enum InteractionMode {
-        case waitingForLocation
-        case draggingInitialWidth
+    enum Interaction {
+        case waitingForPlane
+        case draggingLine
     }
     
-    var planesShown: Bool {
-        get { return RenderingCategory(rawValue: sceneView.pointOfView!.camera!.categoryBitMask).contains(.planes) }
+    var showPlanes: Bool {
+        get { return Rendering(rawValue: sceneView.pointOfView!.camera!.categoryBitMask).contains(.planes) }
         set {
-            var mask = RenderingCategory(rawValue: sceneView.pointOfView!.camera!.categoryBitMask)
+            var layer = Rendering(rawValue: sceneView.pointOfView!.camera!.categoryBitMask)
             if newValue == true {
-                mask.formUnion(.planes)
+                layer.formUnion(.planes)
             } else {
-                mask.subtract(.planes)
+                layer.subtract(.planes)
             }
-            sceneView.pointOfView!.camera!.categoryBitMask = mask.rawValue
+            sceneView.pointOfView!.camera!.categoryBitMask = layer.rawValue
         }
     }
     
-    var mode: InteractionMode = .waitingForLocation {
+    var mode: Interaction = .waitingForPlane {
         didSet {
             switch mode {
-            case .waitingForLocation:
+            case .waitingForPlane:
                 
                 line.isHidden = true
-                
                 hitTestPlane.isHidden = true
                 floor.isHidden = true
+                showPlanes = true
                 
-                planesShown = true
-                
-            case .draggingInitialWidth:
+            case .draggingLine:
                 
                 line.isHidden = false
-                
                 floor.isHidden = false
-                
                 hitTestPlane.isHidden = false
                 hitTestPlane.position = .zero
                 hitTestPlane.boundingBox.min = SCNVector3(x: -1000, y: 0, z: -1000)
                 hitTestPlane.boundingBox.max = SCNVector3(x: 1000, y: 0, z: 1000)
-                
-                planesShown = false
+                showPlanes = false
                 
                 
             }
@@ -84,10 +78,8 @@ class ViewController: UIViewController, ARSCNViewDelegate, UIGestureRecognizerDe
         sceneView.delegate = self
         
         sceneView.antialiasingMode = .multisampling4X
-        sceneView.autoenablesDefaultLighting = true
         
         panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan))
-        
         sceneView.addGestureRecognizer(panGesture)
         
         line = Line()
@@ -98,20 +90,14 @@ class ViewController: UIViewController, ARSCNViewDelegate, UIGestureRecognizerDe
         hitTestPlane.isHidden = true
         line.addChildNode(hitTestPlane)
         
-        let floorSurface = SCNFloor()
-        floorSurface.reflectivity = 0.2
-        floorSurface.reflectionFalloffEnd = 0.05
-        floorSurface.reflectionCategoryBitMask = RenderingCategory.reflected.rawValue
+        let floorTop = SCNFloor()
+        floorTop.firstMaterial?.diffuse.contents = UIColor.black
+        floorTop.firstMaterial?.blendMode = .add
         
-        floorSurface.firstMaterial?.diffuse.contents = UIColor.black
-        floorSurface.firstMaterial?.writesToDepthBuffer = false
-        floorSurface.firstMaterial?.blendMode = .add
-        
-        floor = SCNNode(geometry: floorSurface)
+        floor = SCNNode(geometry: floorTop)
         floor.isHidden = true
         
         line.addChildNode(floor)
-        line.categoryBitMask |= RenderingCategory.reflected.rawValue
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -137,48 +123,48 @@ class ViewController: UIViewController, ARSCNViewDelegate, UIGestureRecognizerDe
     
     @objc dynamic func handlePan(_ gestureRecognizer: UIPanGestureRecognizer) {
         switch mode {
-        case .waitingForLocation:
-            findStartingLocation(gestureRecognizer)
-        case .draggingInitialWidth:
-            handleInitialWidthDrag(gestureRecognizer)
+        case .waitingForPlane:
+            findStart(gestureRecognizer)
+        case .draggingLine:
+            handleLineDrag(gestureRecognizer)
         }
     }
     
     // MARK: Drag Gesture handling
     
-    func findStartingLocation(_ gestureRecognizer: UIPanGestureRecognizer) {
+    func findStart(_ gestureRecognizer: UIPanGestureRecognizer) {
         switch gestureRecognizer.state {
         case .began, .changed:
-            let touchPos = gestureRecognizer.location(in: sceneView)
+            let touched = gestureRecognizer.location(in: sceneView)
             
-            let hit = realWorldHit(at: touchPos)
-            if let startPos = hit.position, let plane = hit.planeAnchor {
-                line.position = startPos
+            let hit = realWorldHit(at: touched)
+            if let start = hit.position, let plane = hit.planeAnchor {
+                line.position = start
                 currentAnchor = plane
-                mode = .draggingInitialWidth
+                mode = .draggingLine
             }
         default:
             break
         }
     }
     
-    func handleInitialWidthDrag(_ gestureRecognizer: UIPanGestureRecognizer) {
+    func handleLineDrag(_ gestureRecognizer: UIPanGestureRecognizer) {
         switch gestureRecognizer.state {
         case .began:
-            mode = .waitingForLocation
+            mode = .waitingForPlane
         case .changed:
-            let touchPos = gestureRecognizer.location(in: sceneView)
-            if let locationInWorld = scenekitHit(at: touchPos, within: hitTestPlane) {
-                let delta = line.position - locationInWorld
+            let touched = gestureRecognizer.location(in: sceneView)
+            if let specificLocation = scenekitHit(at: touched, within: hitTestPlane) {
+                let delta = line.position - specificLocation
                 let distance = delta.length
                 
-                let angleInRadians = atan2(delta.z, delta.x)
+                let angle = atan2(delta.z, delta.x)
                 
                 line.move(side: .right, to: distance)
-                line.rotation = SCNVector4(x: 0, y: 1, z: 0, w: -(angleInRadians + Float.pi))
+                line.rotation = SCNVector4(x: 0, y: 1, z: 0, w: -(angle + Float.pi))
             }
         case .ended, .cancelled:
-            mode = .draggingInitialWidth
+            mode = .draggingLine
         default:
             break
         }
@@ -225,28 +211,16 @@ class ViewController: UIViewController, ARSCNViewDelegate, UIGestureRecognizerDe
                            length: CGFloat(planeAnchor.extent.z), chamferRadius: 0)
         
         if let material = plane.firstMaterial {
-            material.lightingModel = .constant
             material.diffuse.contents = UIColor.red
             material.transparency = 0.1
-            material.writesToDepthBuffer = false
         }
         
         let node = SCNNode(geometry: plane)
-        node.categoryBitMask = RenderingCategory.planes.rawValue
+        node.categoryBitMask = Rendering.planes.rawValue
         
         return node
     }
     
-    func renderer(_ renderer: SCNSceneRenderer, didUpdate node: SCNNode, for anchor: ARAnchor) {
-        guard let planeAnchor = anchor as? ARPlaneAnchor, let plane = node.geometry as? SCNBox else {
-            return
-        }
-        
-        plane.width = CGFloat(planeAnchor.extent.x)
-        plane.length = CGFloat(planeAnchor.extent.z)
-        
-        node.pivot = SCNMatrix4(translationByX: -planeAnchor.center.x, y: -planeAnchor.center.y, z: -planeAnchor.center.z)
-    }
     
     func session(_ session: ARSession, didFailWithError error: Error) {
         // Present an error message to the user

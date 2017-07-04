@@ -15,22 +15,18 @@ class Line: SCNNode {
     }
     
     enum Side: String {
-        case front, back
-        case top, bottom
         case left, right
         
         var axis: SCNVector3.Axis {
             switch self {
             case .left, .right: return .x
-            case .top, .bottom: return .y
-            case .front, .back: return .z
             }
         }
         
         var edge: Edge {
             switch self {
-            case .back, .bottom, .left: return .min
-            case .front, .top, .right: return .max
+            case  .left: return .min
+            case  .right: return .max
             }
         }
     }
@@ -48,36 +44,30 @@ class Line: SCNNode {
     }
     
     enum VerticalAlignment {
-        case top, bottom, center
+        case top
         
         var anchor: Float {
             switch self {
-            case .bottom: return 0
             case .top: return 1
-            case .center: return 0.5
             }
         }
     }
     
     let labelMargin = Float(0.01)
     
-    let lineWidth = CGFloat(0.005)
+    let lineWidth = CGFloat(0.003)
     
-    let vertexRadius = CGFloat(0.005)
+    let vertexRadius = CGFloat(0.003)
     
-    let fontSize = Float(0.025)
+    let fontSize = Float(0.035)
     
-    let minLabelDistanceThreshold = Float(0.01)
-    
-    let minHeightFlatteningThreshold = Float(0.05)
+    let minLabelLimit = Float(0.01)
     
     let lengthFormatter: NumberFormatter
     
     lazy var vertexA: SCNNode = self.makeVertex()
     lazy var vertexB: SCNNode = self.makeVertex()
-    
     lazy var lineAB: SCNNode = self.makeLine()
-    
     lazy var widthLabel: SCNNode = self.makeLabel()
     
     //MARK: - Constructors
@@ -147,7 +137,6 @@ class Line: SCNNode {
     func resizeTo(min minExtents: SCNVector3, max maxExtents: SCNVector3) {
         let absMin = SCNVector3(x: min(minExtents.x, maxExtents.x), y: min(minExtents.y, maxExtents.y), z: min(minExtents.z, maxExtents.z))
         let absMax = SCNVector3(x: max(minExtents.x, maxExtents.x), y: max(minExtents.y, maxExtents.y), z: max(minExtents.z, maxExtents.z))
-        
         boundingBox = (absMin, absMax)
         update()
     }
@@ -172,17 +161,9 @@ class Line: SCNNode {
         widthLabel.orientation = SCNQuaternion(radians: -Float.pi / 2, around: .axisX)
         
         
-        widthLabel.isHidden = size.x < minLabelDistanceThreshold
+        widthLabel.isHidden = size.x < minLabelLimit
         
-        let horizontalNodes = [
-            vertexA, vertexB,
-            lineAB,
-            ]
         
-        let flatteningRatio = min(size.y, minHeightFlatteningThreshold) / minHeightFlatteningThreshold
-        for node in horizontalNodes {
-            node.scale = SCNVector3(x: 1, y: flatteningRatio, z: 1)
-        }
     }
     
     fileprivate func updateLine(_ line: SCNNode, from position: SCNVector3, distance: Float, axis: SCNVector3.Axis) {
@@ -196,12 +177,6 @@ class Line: SCNNode {
         case .x:
             Line.width = absDistance
             line.position = position + SCNVector3(x: offset, y: 0, z: 0)
-        case .y:
-            Line.height = absDistance
-            line.position = position + SCNVector3(x: 0, y: offset, z: 0)
-        case .z:
-            Line.length = absDistance
-            line.position = position + SCNVector3(x: 0, y: 0, z: offset)
         }
     }
     
@@ -212,7 +187,7 @@ class Line: SCNNode {
         }
         
         text.string = lengthFormatter.string(for: NSNumber(value: distanceInMetres))! + " cm"
-        let textAnchor = text.pointInBounds(at: SCNVector3(x: horizontalAlignment.anchor, y: verticalAlignment.anchor, z: 0))
+        let textAnchor = text.pointInBounds(at: SCNVector3(x: horizontalAlignment.anchor, y: verticalAlignment.anchor, z:0))
         label.pivot = SCNMatrix4(translation: textAnchor)
     }
 }
