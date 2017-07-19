@@ -17,6 +17,8 @@
 		FF1562BE1F0A7B6B0003F046 /* RulerUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1562BD1F0A7B6B0003F046 /* RulerUITests.swift */; };
 		FF1562CC1F0A7C150003F046 /* Line.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1562CB1F0A7C150003F046 /* Line.swift */; };
 		FF1562CE1F0A81450003F046 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1562CD1F0A81450003F046 /* Extensions.swift */; };
+		FF5BD1551F1F6CCD006FA4DF /* 54443 copy.png in Resources */ = {isa = PBXBuildFile; fileRef = FF4288121F1F5D5100FC0B0E /* 54443 copy.png */; };
+		FF5BD1561F1F6CCD006FA4DF /* shutter.png in Resources */ = {isa = PBXBuildFile; fileRef = FF6B383B1F0CCD4900BD4A88 /* shutter.png */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -53,6 +55,9 @@
 		FF1562BF1F0A7B6B0003F046 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		FF1562CB1F0A7C150003F046 /* Line.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Line.swift; sourceTree = "<group>"; };
 		FF1562CD1F0A81450003F046 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
+		FF4288121F1F5D5100FC0B0E /* 54443 copy.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "54443 copy.png"; sourceTree = "<group>"; };
+		FF6B383B1F0CCD4900BD4A88 /* shutter.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = shutter.png; sourceTree = "<group>"; };
+		FF6B383C1F0CCD4900BD4A88 /* shutter@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "shutter@3x.png"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,6 +108,7 @@
 		FF15629A1F0A7B6A0003F046 /* Ruler */ = {
 			isa = PBXGroup;
 			children = (
+				FF6B383A1F0CCD4900BD4A88 /* Supporting Files */,
 				FF15629B1F0A7B6A0003F046 /* AppDelegate.swift */,
 				FF1562CB1F0A7C150003F046 /* Line.swift */,
 				FF15629D1F0A7B6A0003F046 /* art.scnassets */,
@@ -132,6 +138,16 @@
 				FF1562BF1F0A7B6B0003F046 /* Info.plist */,
 			);
 			path = RulerUITests;
+			sourceTree = "<group>";
+		};
+		FF6B383A1F0CCD4900BD4A88 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				FF4288121F1F5D5100FC0B0E /* 54443 copy.png */,
+				FF6B383B1F0CCD4900BD4A88 /* shutter.png */,
+				FF6B383C1F0CCD4900BD4A88 /* shutter@3x.png */,
+			);
+			path = "Supporting Files";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -238,6 +254,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FF5BD1551F1F6CCD006FA4DF /* 54443 copy.png in Resources */,
+				FF5BD1561F1F6CCD006FA4DF /* shutter.png in Resources */,
 				FF15629E1F0A7B6A0003F046 /* art.scnassets in Resources */,
 				FF1562A81F0A7B6A0003F046 /* LaunchScreen.storyboard in Resources */,
 				FF1562A51F0A7B6A0003F046 /* Assets.xcassets in Resources */,
@@ -536,6 +554,7 @@
 				FF1562C41F0A7B6B0003F046 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		FF1562C51F0A7B6B0003F046 /* Build configuration list for PBXNativeTarget "RulerTests" */ = {
 			isa = XCConfigurationList;
@@ -544,6 +563,7 @@
 				FF1562C71F0A7B6B0003F046 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		FF1562C81F0A7B6B0003F046 /* Build configuration list for PBXNativeTarget "RulerUITests" */ = {
 			isa = XCConfigurationList;
@@ -552,6 +572,7 @@
 				FF1562CA1F0A7B6B0003F046 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

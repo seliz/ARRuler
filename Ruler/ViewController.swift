@@ -10,28 +10,25 @@ import UIKit
 import SceneKit
 import ARKit
 
-class ViewController: UIViewController, ARSCNViewDelegate, UIGestureRecognizerDelegate {
+class ViewController: UIViewController, ARSCNViewDelegate {
     
     @IBOutlet var sceneView: ARSCNView!
+    @IBOutlet var plusSymbol: UIImageView!
+    @IBOutlet var button: UIButton!
     
-    var panGesture: UIPanGestureRecognizer!
     
-    
-    var line: Line!
+    var line: Line?
+    var lines: [Line] = []
     var hitTestPlane: SCNNode!
     var floor: SCNNode!
     
     var currentAnchor: ARAnchor?
     
-    struct Rendering: OptionSet {
-        let rawValue: Int
-        static let planes = Rendering(rawValue: 1 << 2)
-    }
-    
     enum Interaction {
         case waitingForPlane
         case draggingLine
     }
+    
     
     var showPlanes: Bool {
         get { return Rendering(rawValue: sceneView.pointOfView!.camera!.categoryBitMask).contains(.planes) }
@@ -51,19 +48,20 @@ class ViewController: UIViewController, ARSCNViewDelegate, UIGestureRecognizerDe
             switch mode {
             case .waitingForPlane:
                 
-                line.isHidden = true
                 hitTestPlane.isHidden = true
                 floor.isHidden = true
+                
                 showPlanes = true
                 
             case .draggingLine:
                 
-                line.isHidden = false
                 floor.isHidden = false
+                
                 hitTestPlane.isHidden = false
                 hitTestPlane.position = .zero
                 hitTestPlane.boundingBox.min = SCNVector3(x: -1000, y: 0, z: -1000)
                 hitTestPlane.boundingBox.max = SCNVector3(x: 1000, y: 0, z: 1000)
+                
                 showPlanes = false
                 
                 
@@ -71,45 +69,26 @@ class ViewController: UIViewController, ARSCNViewDelegate, UIGestureRecognizerDe
         }
     }
     
+    
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
         // Set the view's delegate
         sceneView.delegate = self
-        
         sceneView.antialiasingMode = .multisampling4X
+        sceneView.autoenablesDefaultLighting = true
         
-        panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan))
-        sceneView.addGestureRecognizer(panGesture)
-        
-        line = Line()
-        line.isHidden = true
-        sceneView.scene.rootNode.addChildNode(line)
-        
-        hitTestPlane = SCNNode()
-        hitTestPlane.isHidden = true
-        line.addChildNode(hitTestPlane)
-        
-        let floorTop = SCNFloor()
-        floorTop.firstMaterial?.diffuse.contents = UIColor.black
-        floorTop.firstMaterial?.blendMode = .add
-        
-        floor = SCNNode(geometry: floorTop)
-        floor.isHidden = true
-        
-        line.addChildNode(floor)
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        
         // Create a session configuration
         let configuration = ARWorldTrackingSessionConfiguration()
         configuration.planeDetection = .horizontal
         
         // Run the view's session
-        sceneView.session.run(configuration)
-    }
+        sceneView.session.run(configuration)    }
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
@@ -118,88 +97,50 @@ class ViewController: UIViewController, ARSCNViewDelegate, UIGestureRecognizerDe
         sceneView.session.pause()
     }
     
-
-    // MARK: - Touch handling
-    
-    @objc dynamic func handlePan(_ gestureRecognizer: UIPanGestureRecognizer) {
-        switch mode {
-        case .waitingForPlane:
-            findStart(gestureRecognizer)
-        case .draggingLine:
-            handleLineDrag(gestureRecognizer)
-        }
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        // Release any cached data, images, etc that aren't in use.
     }
     
-    // MARK: Drag Gesture handling
     
-    func findStart(_ gestureRecognizer: UIPanGestureRecognizer) {
-        switch gestureRecognizer.state {
-        case .began, .changed:
-            let touched = gestureRecognizer.location(in: sceneView)
-            
-            let hit = realWorldHit(at: touched)
-            if let start = hit.position, let plane = hit.planeAnchor {
-                line.position = start
-                currentAnchor = plane
-                mode = .draggingLine
+    
+    @IBAction func drawLine(_ sender: UIButton) {
+        sender.isSelected = !sender.isSelected;
+        if line == nil {
+            let startPos = realWorldHit(plusSymbol.center, objectPos: nil, infinitePlane: true)
+            if let p = startPos.position {
+                line = Line(startPos: p, sceneV: sceneView)
             }
-        default:
-            break
-        }
-    }
-    
-    func handleLineDrag(_ gestureRecognizer: UIPanGestureRecognizer) {
-        switch gestureRecognizer.state {
-        case .began:
-            mode = .waitingForPlane
-        case .changed:
-            let touched = gestureRecognizer.location(in: sceneView)
-            if let specificLocation = scenekitHit(at: touched, within: hitTestPlane) {
-                let delta = line.position - specificLocation
-                let distance = delta.length
-                
-                let angle = atan2(delta.z, delta.x)
-                
-                line.move(side: .right, to: distance)
-                line.rotation = SCNVector4(x: 0, y: 1, z: 0, w: -(angle + Float.pi))
-            }
-        case .ended, .cancelled:
-            mode = .draggingLine
-        default:
-            break
-        }
-    }
-    
-    
-    // MARK: - Hit-testing
-    
-    func scenekitHit(at screenPos: CGPoint, within rootNode: SCNNode) -> SCNVector3? {
-        let hits = sceneView.hitTest(screenPos, options: [
-            .boundingBoxOnly: true,
-            .firstFoundOnly: true,
-            .rootNode: rootNode,
-            .ignoreChildNodes: true
-            ])
-        
-        return hits.first?.worldCoordinates
-    }
-    
-    func realWorldHit(at screenPos: CGPoint) -> (position: SCNVector3?, planeAnchor: ARPlaneAnchor?, hitAPlane: Bool) {
-        
-        let planeHitTestResults = sceneView.hitTest(screenPos, types: .existingPlaneUsingExtent)
-        if let result = planeHitTestResults.first {
-            
-            let planeHitTestPosition = SCNVector3.positionFromTransform(result.worldTransform)
-            let planeAnchor = result.anchor
-            
-            return (planeHitTestPosition, planeAnchor as? ARPlaneAnchor, true)
+        }else{
+            lines.append(line!)
+            line = nil
         }
         
-        return (nil, nil, false)
+    }
+    
+ 
+    
+    struct Rendering: OptionSet {
+        let rawValue: Int
+        static let planes = Rendering(rawValue: 1 << 2)
     }
     
     
     // MARK: - ARSCNViewDelegate
+    
+    func renderer(_ renderer: SCNSceneRenderer, updateAtTime time: TimeInterval) {
+        DispatchQueue.main.async {
+            self.updateLine()
+        }
+    }
+    
+    func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
+        DispatchQueue.main.async {
+            if let planeAnchor = anchor as? ARPlaneAnchor {
+                self.addPlane(node: node, anchor: planeAnchor)
+            }
+        }
+    }
     
     func renderer(_ renderer: SCNSceneRenderer, nodeFor anchor: ARAnchor) -> SCNNode? {
         guard let planeAnchor = anchor as? ARPlaneAnchor else {
@@ -221,19 +162,72 @@ class ViewController: UIViewController, ARSCNViewDelegate, UIGestureRecognizerDe
         return node
     }
     
-    
     func session(_ session: ARSession, didFailWithError error: Error) {
         // Present an error message to the user
-        
     }
     
     func sessionWasInterrupted(_ session: ARSession) {
         // Inform the user that the session has been interrupted, for example, by presenting an overlay
-        
     }
     
     func sessionInterruptionEnded(_ session: ARSession) {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
+    }
+    
+    func updateLine() -> Void {
+        let startPos = self.realWorldHit(self.plusSymbol.center, objectPos: nil, infinitePlane: true)
+        if let p = startPos.position {
+            let length = self.line?.updatePosition(pos: p, camera: self.sceneView.session.currentFrame?.camera) ?? 0
+            updateDistanceLabel(distance: length)
+        }
+    }
+    
+    func updateDistanceLabel(distance:Float) -> Void {
+        let cm = NSAttributedString(string: Float.LengthUnit.CentiMeter.rate.1, attributes: [NSAttributedStringKey.font:UIFont.systemFont(ofSize: 15)])
+        var dis = String(format: "%.1f", arguments: [distance*Float.LengthUnit.Ruler.rate.0])
+        var result = NSMutableAttributedString(string: dis, attributes:[NSAttributedStringKey.font:UIFont.boldSystemFont(ofSize: 18)])
+        dis = String(format: "%.1f", arguments: [distance*Float.LengthUnit.CentiMeter.rate.0])
+        result = NSMutableAttributedString(string: dis, attributes:[NSAttributedStringKey.font:UIFont.boldSystemFont(ofSize: 25)])
+        result.append(cm)
+    }
+    
+    // MARK: - Planes
+    
+    func addPlane(node: SCNNode, anchor: ARPlaneAnchor) {
         
+        button.isEnabled = true
+        
+        UIView.animate(withDuration: 1) {
+        }
+    }
+    
+}
+
+func renderer(_ renderer: SCNSceneRenderer, didUpdate node: SCNNode, for anchor: ARAnchor) {
+    guard let planeAnchor = anchor as? ARPlaneAnchor, let plane = node.geometry as? SCNBox else {
+        return
+    }
+    
+    plane.width = CGFloat(planeAnchor.extent.x)
+    plane.length = CGFloat(planeAnchor.extent.z)
+    
+    node.pivot = SCNMatrix4(translationByX: -planeAnchor.center.x, y: -planeAnchor.center.y, z: -planeAnchor.center.z)
+}
+
+extension ViewController {
+    func realWorldHit(_ position: CGPoint,
+                      objectPos: SCNVector3?,
+                      infinitePlane: Bool = false) -> (position: SCNVector3?, planeAnchor: ARPlaneAnchor?, hitAPlane: Bool) {
+        
+        let planeHitTestResults = sceneView.hitTest(position, types: .existingPlaneUsingExtent)
+        if let result = planeHitTestResults.first {
+            
+            let planeHitTestPosition = SCNVector3.positionFromTransform(result.worldTransform)
+            let planeAnchor = result.anchor
+            
+            return (planeHitTestPosition, planeAnchor as? ARPlaneAnchor, true)
+        }
+        return (nil, nil, false)
     }
 }
+

@@ -6,200 +6,152 @@
 //  Copyright © 2017 Seliz Kaya. All rights reserved.
 //
 
-import Foundation
+import UIKit
 import SceneKit
+import ARKit
 
-class Line: SCNNode {
-    enum Edge {
-        case min, max
+class Line: NSObject {
+    var startNode: SCNNode!
+    var endNode: SCNNode!
+    var lineNode: SCNNode?
+    var textNode: SCNNode!
+    
+    let sceneView: ARSCNView?
+    
+    init(startPos: SCNVector3, sceneV: ARSCNView) {
+        sceneView = sceneV
+        
+        let dot = SCNSphere(radius:1)
+        dot.firstMaterial?.diffuse.contents = UIColor.white
+        dot.firstMaterial?.lightingModel = .constant
+        dot.firstMaterial?.isDoubleSided = true
+        
+        startNode = SCNNode(geometry: dot)
+        startNode.scale = SCNVector3(1/400.0, 1/400.0, 1/400.0)
+        startNode.position = startPos
+        sceneView?.scene.rootNode.addChildNode(startNode)
+        
+        endNode = SCNNode(geometry: dot)
+        endNode.scale = SCNVector3(1/400.0, 1/400.0, 1/400.0)
+        
+        lineNode = nil
+        
+        
+        let text = SCNText (string: "--", extrusionDepth: 0.1)
+        text.font = UIFont.systemFont(ofSize: 10)
+        text.firstMaterial?.diffuse.contents = UIColor.white
+        text.alignmentMode  = kCAAlignmentCenter
+        text.truncationMode = kCATruncationMiddle
+        text.firstMaterial?.isDoubleSided = true
+        textNode = SCNNode(geometry: text)
+        textNode.scale = SCNVector3(1/500.0, 1/500.0, 1/500.0)
+        textNode.rotation = SCNVector4(1, 0, 0, -Double.pi/2.0)
     }
     
-    enum Side: String {
-        case left, right
-        case front, back
-        case top, bottom
-        
-        var axis: SCNVector3.Axis {
-            switch self {
-            case .left, .right: return .x
-            case .top, .bottom: return .y
-            case .front, .back: return .z
-            }
-        }
-        
-        var edge: Edge {
-            switch self {
-            case  .back, .bottom, .left: return .min
-            case  .front, .top, .right: return .max
-            }
-        }
-    }
     
-    enum HorizontalAlignment {
-        case left, right, center
-        
-        var anchor: Float {
-            switch self {
-            case .left: return 0
-            case .right: return 1
-            case .center: return 0.5
-            }
-        }
-    }
-    
-    enum VerticalAlignment {
-        case top, bottom, center
-        
-        var anchor: Float {
-            switch self {
-            case .bottom: return 0
-            case .top: return 1
-            case .center: return 0.5
-            }
-        }
-    }
-    
-    let labelMargin = Float(0.01)
-    
-    let lineWidth = CGFloat(0.003)
-    
-    let vertexRadius = CGFloat(0.003)
-    
-    let fontSize = Float(0.035)
-    
-    let minLabelLimit = Float(0.01)
-    
-    let lengthFormatter: NumberFormatter
-    
-    lazy var vertexA: SCNNode = self.makeVertex()
-    lazy var vertexB: SCNNode = self.makeVertex()
-    lazy var lineAB: SCNNode = self.makeLine()
-    lazy var widthLabel: SCNNode = self.makeLabel()
-    
-    //MARK: - Constructors
-    
-    override init() {
-        self.lengthFormatter = NumberFormatter()
-        self.lengthFormatter.numberStyle = .decimal
-        self.lengthFormatter.maximumFractionDigits = 1
-        self.lengthFormatter.multiplier = 100
-        
-        super.init()
-        
-        resizeTo(min: .zero, max: .zero)
-    }
     
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
-    fileprivate func makeNode(with geometry: SCNGeometry) -> SCNNode {
-        for material in geometry.materials {
-            material.lightingModel = .constant
-            material.diffuse.contents = UIColor.white
-            material.isDoubleSided = false
+    public func updatePosition(pos: SCNVector3, camera: ARCamera?) -> Float {
+        let posEnd = updateTransform(for: pos, camera: camera)
+        
+        if endNode.parent == nil {
+            sceneView?.scene.rootNode.addChildNode(endNode)
+        }
+        endNode.position = posEnd
+        
+        let posStart = startNode.position
+        let middle = SCNVector3((posStart.x+posEnd.x)/2.0, (posStart.y+posEnd.y)/2.0+0.002, (posStart.z+posEnd.z)/2.0)
+        
+        let text = textNode.geometry as! SCNText
+        let length = posEnd.distanceFromPos(pos: startNode.position)
+        text.string = String(format: "%.2fcm", length*Float.LengthUnit.CentiMeter.rate.0)
+        textNode.setPivot()
+        textNode.position = middle
+        if textNode.parent == nil {
+            sceneView?.scene.rootNode.addChildNode(textNode)
         }
         
-        let node = SCNNode(geometry: geometry)
-        self.addChildNode(node)
-        return node
-    }
-    
-    fileprivate func makeVertex() -> SCNNode {
-        let ball = SCNSphere(radius: vertexRadius)
-        return makeNode(with: ball)
-    }
-    
-    fileprivate func makeLine() -> SCNNode {
-        let line = SCNBox(width: lineWidth, height: lineWidth, length: lineWidth, chamferRadius: 0)
-        return makeNode(with: line)
-    }
-    
-    fileprivate func makeLabel() -> SCNNode {
+        lineNode?.removeFromParentNode()
+        lineNode = lineBetweenNodes(nodeA: startNode, nodeB: endNode)
+        sceneView?.scene.rootNode.addChildNode(lineNode!)
         
-        let text = SCNText(string: "", extrusionDepth: 0.0)
-        text.font = UIFont.boldSystemFont(ofSize: 1.0)
-        text.flatness = 0.01
-        
-        let node = makeNode(with: text)
-        node.setUniformScale(fontSize)
-        
-        return node
+        return length
     }
     
     
-    //MARK: - Transformation
     
-    func move(side: Side, to extent: Float) {
-        var (min, max) = boundingBox
-        switch side.edge {
-        case .min: min.setAxis(side.axis, to: extent)
-        case .max: max.setAxis(side.axis, to: extent)
+    
+    
+    // MARK: - Private
+    
+    private func lineBetweenNodes(nodeA: SCNNode, nodeB: SCNNode) -> SCNNode {
+        let positions: [Float32] = [nodeA.position.x, nodeA.position.y, nodeA.position.z, nodeB.position.x, nodeB.position.y, nodeB.position.z]
+        let positionData = NSData(bytes: positions, length: MemoryLayout<Float32>.size*positions.count)
+        let indices: [Int32] = [0, 1]
+        let indexData = NSData(bytes: indices, length: MemoryLayout<Int32>.size * indices.count)
+        
+        let source = SCNGeometrySource(data: positionData as Data, semantic: SCNGeometrySource.Semantic.vertex, vectorCount: indices.count, usesFloatComponents: true, componentsPerVector: 3, bytesPerComponent: MemoryLayout<Float32>.size, dataOffset: 0, dataStride: MemoryLayout<Float32>.size * 3)
+        let element = SCNGeometryElement(data: indexData as Data, primitiveType: SCNGeometryPrimitiveType.line, primitiveCount: indices.count, bytesPerIndex: MemoryLayout<Int32>.size)
+        
+        let line = SCNGeometry(sources: [source], elements: [element])
+        line.firstMaterial?.diffuse.contents = UIColor.white
+        return SCNNode(geometry: line)
+    }
+    
+    // use average of recent positions to avoid jitter
+    private var recentFocusSquarePositions = [SCNVector3]()
+    
+    private func updateTransform(for position: SCNVector3, camera: ARCamera?) -> SCNVector3 {
+        // add to list of recent positions
+        recentFocusSquarePositions.append(position)
+        
+        // remove anything older than the last 8
+        recentFocusSquarePositions.keepLast(8)
+        
+        // Correct y rotation of camera square
+        if let camera = camera {
+            let tilt = abs(camera.eulerAngles.x)
+            let threshold1: Float = Float.pi / 2 * 0.65
+            let threshold2: Float = Float.pi / 2 * 0.75
+            let yaw = atan2f(camera.transform.columns.0.x, camera.transform.columns.1.x)
+            var angle: Float = 0
+            
+            switch tilt {
+            case 0..<threshold1:
+                angle = camera.eulerAngles.y
+            case threshold1..<threshold2:
+                let relativeInRange = abs((tilt - threshold1) / (threshold2 - threshold1))
+                let normalizedY = normalize(camera.eulerAngles.y, forMinimalRotationTo: yaw)
+                angle = normalizedY * (1 - relativeInRange) + yaw * relativeInRange
+            default:
+                angle = yaw
+            }
+            textNode.runAction(SCNAction.rotateTo(x: CGFloat(-Float.pi/2.0), y: CGFloat(angle), z: 0, duration: 0))
+            //            textNode.rotation = SCNVector4Make(0, 1, 0, angle)
         }
         
-        resizeTo(min: min, max: max)
-    }
-    
-    func resizeTo(min minExtents: SCNVector3, max maxExtents: SCNVector3) {
-        let absMin = SCNVector3(x: min(minExtents.x, maxExtents.x), y: min(minExtents.y, maxExtents.y), z: min(minExtents.z, maxExtents.z))
-        let absMax = SCNVector3(x: max(minExtents.x, maxExtents.x), y: max(minExtents.y, maxExtents.y), z: max(minExtents.z, maxExtents.z))
-        boundingBox = (absMin, absMax)
-        update()
-    }
-    
-    fileprivate func update() {
-        let (minBounds, maxBounds) = boundingBox
-        
-        let size = maxBounds - minBounds
-        
-        assert(size.x >= 0 && size.y >= 0 && size.z >= 0)
-        
-        let A = SCNVector3(x: minBounds.x, y: minBounds.y, z: minBounds.z)
-        let B = SCNVector3(x: maxBounds.x, y: minBounds.y, z: minBounds.z)
-        
-        vertexA.position = A
-        vertexB.position = B
-        
-        updateLine(lineAB, from: A, distance: size.x, axis: .x)
-        
-        updateLabel(widthLabel, distance: size.x, horizontalAlignment: .center, verticalAlignment: .top)
-        widthLabel.position = pointInBounds(at: SCNVector3(x: 0.5, y: 0, z: 1)) + SCNVector3(x: 0, y: 0, z: labelMargin)
-        widthLabel.orientation = SCNQuaternion(radians: -Float.pi / 2, around: .axisX)
-        
-        
-        widthLabel.isHidden = size.x < minLabelLimit
-        
-        
-    }
-    
-    fileprivate func updateLine(_ line: SCNNode, from position: SCNVector3, distance: Float, axis: SCNVector3.Axis) {
-        guard let Line = line.geometry as? SCNBox else {
-            fatalError("Tried to update something that is not a line")
+        // move to average of recent positions to avoid jitter
+        if let average = recentFocusSquarePositions.average {
+            return average
         }
         
-        let absDistance = CGFloat(abs(distance))
-        let offset = distance * 0.5
-        switch axis {
-        case .x:
-            Line.width = absDistance
-            line.position = position + SCNVector3(x: offset, y: 0, z: 0)
-        case .y:
-            Line.height = absDistance
-            line.position = position + SCNVector3(x: 0, y: offset, z: 0)
-        case .z:
-            Line.length = absDistance
-            line.position = position + SCNVector3(x: 0, y: 0, z: offset)
-        }
+        return SCNVector3Zero
     }
     
-    
-    fileprivate func updateLabel(_ label: SCNNode, distance distanceInMetres: Float, horizontalAlignment: HorizontalAlignment, verticalAlignment: VerticalAlignment) {
-        guard let text = label.geometry as? SCNText else {
-            fatalError("Tried to update something that is not a label")
+    private func normalize(_ angle: Float, forMinimalRotationTo ref: Float) -> Float {
+        // Normalize angle in steps of 90 degrees such that the rotation to the other angle is minimal
+        var normalized = angle
+        while abs(normalized - ref) > Float.pi / 4 {
+            if angle > ref {
+                normalized -= Float.pi / 2
+            } else {
+                normalized += Float.pi / 2
+            }
         }
-        
-        text.string = lengthFormatter.string(for: NSNumber(value: distanceInMetres))! + " cm"
-        let textAnchor = text.pointInBounds(at: SCNVector3(x: horizontalAlignment.anchor, y: verticalAlignment.anchor, z: 0))
-        label.pivot = SCNMatrix4(translation: textAnchor)
+        return normalized
     }
 }
+
