@@ -82,7 +82,12 @@ class Line: NSObject {
     }
     
     
-    
+    func removeFromParent() -> Void {
+        startNode.removeFromParentNode()
+        endNode.removeFromParentNode()
+        lineNode?.removeFromParentNode()
+        textNode.removeFromParentNode()
+    }
     
     
     // MARK: - Private

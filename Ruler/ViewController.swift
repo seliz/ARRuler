@@ -12,9 +12,12 @@ import ARKit
 
 class ViewController: UIViewController, ARSCNViewDelegate {
     
+    
+    @IBOutlet var refresh: UIButton!
     @IBOutlet var sceneView: ARSCNView!
     @IBOutlet var plusSymbol: UIImageView!
     @IBOutlet var button: UIButton!
+    @IBOutlet var Label: UILabel!
     
     
     var line: Line?
@@ -84,11 +87,9 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         // Create a session configuration
-        let configuration = ARWorldTrackingSessionConfiguration()
-        configuration.planeDetection = .horizontal
+        restart()
         
-        // Run the view's session
-        sceneView.session.run(configuration)    }
+    }
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
@@ -119,6 +120,15 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     }
     
  
+    @IBAction func Refreshing(_ sender: UIButton) {
+        
+        line?.removeFromParent()
+        line = nil
+        for node in lines {
+            node.removeFromParent()
+        }
+        restart()
+    }
     
     struct Rendering: OptionSet {
         let rawValue: Int
@@ -162,6 +172,17 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         return node
     }
     
+    func restart() {
+        // Create a session configuration
+        let configuration = ARWorldTrackingSessionConfiguration()
+        configuration.planeDetection = .horizontal
+        // Run the view's session
+        sceneView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
+        
+        button.isEnabled = false
+        Label.alpha = 1
+    }
+    
     func session(_ session: ARSession, didFailWithError error: Error) {
         // Present an error message to the user
     }
@@ -189,6 +210,7 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         dis = String(format: "%.1f", arguments: [distance*Float.LengthUnit.CentiMeter.rate.0])
         result = NSMutableAttributedString(string: dis, attributes:[NSAttributedStringKey.font:UIFont.boldSystemFont(ofSize: 25)])
         result.append(cm)
+        Label.attributedText = result
     }
     
     // MARK: - Planes
@@ -198,6 +220,7 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         button.isEnabled = true
         
         UIView.animate(withDuration: 1) {
+            self.Label.alpha = 1
         }
     }
     
