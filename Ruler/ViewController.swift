@@ -9,8 +9,9 @@
 import UIKit
 import SceneKit
 import ARKit
+import Photos
 
-class ViewController: UIViewController, ARSCNViewDelegate {
+class ViewController: UIViewController, ARSCNViewDelegate, UIPopoverPresentationControllerDelegate {
     
     
     @IBOutlet var refresh: UIButton!
@@ -18,6 +19,8 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     @IBOutlet var plusSymbol: UIImageView!
     @IBOutlet var button: UIButton!
     @IBOutlet var Label: UILabel!
+    @IBOutlet weak var planeVisual: UISwitch!
+    @IBOutlet weak var SSbutton: UIButton!
     
     
     var line: Line?
@@ -31,6 +34,8 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         case waitingForPlane
         case draggingLine
     }
+    
+    
     
     
     var showPlanes: Bool {
@@ -119,17 +124,72 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         
     }
     
- 
-    @IBAction func Refreshing(_ sender: UIButton) {
+    @IBAction func showPlaneVisual(_ sender: UISwitch) {
         
-        line?.removeFromParent()
-        line = nil
-        for node in lines {
-            node.removeFromParent()
+        if planeVisual.isOn {
+            
         }
-        restart()
+        else {
+            
+        }
     }
     
+    
+    @IBAction func takeSS(_ sender: UIButton) {
+        guard SSbutton.isEnabled else {
+            return
+        }
+        
+        let SSBlock = {
+            UIImageWriteToSavedPhotosAlbum(self.sceneView.snapshot(), nil, nil, nil)
+            DispatchQueue.main.async {
+                let flash = UIView(frame: self.sceneView.frame)
+                flash.backgroundColor = UIColor.white
+                self.sceneView.addSubview(flash)
+                UIView.animate(withDuration: 0.25, animations: {
+                    flash.alpha = 0.0
+                }, completion: { _ in
+                    flash.removeFromSuperview()
+                })
+            }
+        }
+        
+        switch PHPhotoLibrary.authorizationStatus() {
+        case .authorized:
+            SSBlock()
+        case .restricted, .denied:
+            let title = "Photos access denied"
+            let message = "Please enable Photos access for this application in Settings > Privacy to allow saving screenshots."
+            
+            let popUp = UIAlertController(title: title, message: message, preferredStyle: UIAlertControllerStyle.alert)
+            
+            popUp.addAction(UIAlertAction(title: "Got it!", style: UIAlertActionStyle.default, handler: nil))
+            
+            self.present(popUp, animated: true, completion: nil)
+            UIView.animate(withDuration: 1) {
+                self.Label.alpha = 1
+            }
+            
+        case .notDetermined:
+            PHPhotoLibrary.requestAuthorization({ (authorizationStatus) in
+                if authorizationStatus == .authorized {
+                    SSBlock()
+                }
+            })
+        }
+    }
+    
+    @IBAction func Refreshing(_ sender: UIButton) {
+        
+        UIView.animate(withDuration: 1){
+            self.line?.removeFromParent()
+            self.line = nil
+            for node in self.lines {
+            node.removeFromParent()
+        }
+            self.restart()
+    }
+    }
     struct Rendering: OptionSet {
         let rawValue: Int
         static let planes = Rendering(rawValue: 1 << 2)
@@ -153,6 +213,7 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     }
     
     func renderer(_ renderer: SCNSceneRenderer, nodeFor anchor: ARAnchor) -> SCNNode? {
+            
         guard let planeAnchor = anchor as? ARPlaneAnchor else {
             return nil
         }
@@ -161,7 +222,7 @@ class ViewController: UIViewController, ARSCNViewDelegate {
                            height: 0.0001,
                            length: CGFloat(planeAnchor.extent.z), chamferRadius: 0)
         
-        if let material = plane.firstMaterial {
+       if let material = plane.firstMaterial {
             material.diffuse.contents = UIColor.red
             material.transparency = 0.1
         }
@@ -170,7 +231,9 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         node.categoryBitMask = Rendering.planes.rawValue
         
         return node
+            
     }
+    
     
     func restart() {
         // Create a session configuration
@@ -219,12 +282,19 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         
         button.isEnabled = true
         
+        let popupController = UIAlertController(title: "You Can Start Measuring Now!", message: "", preferredStyle: UIAlertControllerStyle.alert)
+        popupController.addAction(UIAlertAction(title: "Ok, bye", style: UIAlertActionStyle.default,handler: nil))
+        
+        self.present(popupController, animated: true, completion: nil)
         UIView.animate(withDuration: 1) {
             self.Label.alpha = 1
         }
     }
     
 }
+
+
+
 
 func renderer(_ renderer: SCNSceneRenderer, didUpdate node: SCNNode, for anchor: ARAnchor) {
     guard let planeAnchor = anchor as? ARPlaneAnchor, let plane = node.geometry as? SCNBox else {
